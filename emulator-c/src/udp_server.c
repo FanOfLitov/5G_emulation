@@ -4,9 +4,18 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <time.h>
+#include <signal.h>
 
 #define DEFAULT_PORT 5000
 #define BUFFER_SIZE 65536
+#define OUTPUT_FILE "udp_server_results.csv"
+
+static volatile int running = 1;
+
+void handle_signal(int signal) {
+    (void)signal;
+    running = 0;
+}
 
 int main(int argc, char *argv[]) {
     int port = DEFAULT_PORT;
@@ -14,6 +23,8 @@ int main(int argc, char *argv[]) {
     if (argc >= 2) {
         port = atoi(argv[1]);
     }
+
+    signal(SIGINT, handle_signal);
 
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 
@@ -35,8 +46,19 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
+    FILE *csv = fopen(OUTPUT_FILE, "w");
+
+    if (csv == NULL) {
+        perror("fopen");
+        close(sockfd);
+        return EXIT_FAILURE;
+    }
+
+    fprintf(csv, "timestamp,packet_number,packet_size,total_packets,total_bytes,throughput_kbps\n");
+
     printf("UDP Server started on port %d\n", port);
-    printf("Waiting for packets...\n");
+    printf("Saving results to %s\n", OUTPUT_FILE);
+    printf("Press Ctrl+C to stop\n\n");
 
     char buffer[BUFFER_SIZE];
 
@@ -45,10 +67,14 @@ int main(int argc, char *argv[]) {
 
     time_t start = time(NULL);
 
-    while (1) {
+    while (running) {
         ssize_t received = recvfrom(sockfd, buffer, sizeof(buffer), 0, NULL, NULL);
 
         if (received < 0) {
+            if (!running) {
+                break;
+            }
+
             perror("recvfrom");
             break;
         }
@@ -65,6 +91,16 @@ int main(int argc, char *argv[]) {
 
         double throughput_kbps = ((double)bytes * 8.0) / duration / 1000.0;
 
+        fprintf(csv, "%ld,%ld,%zd,%ld,%ld,%.2f\n",
+                now,
+                packets,
+                received,
+                packets,
+                bytes,
+                throughput_kbps);
+
+        fflush(csv);
+
         printf("Packets: %ld | Bytes: %ld | Throughput: %.2f Kbit/s\r",
                packets,
                bytes,
@@ -73,6 +109,12 @@ int main(int argc, char *argv[]) {
         fflush(stdout);
     }
 
+    printf("\n\nServer stopped\n");
+    printf("Total packets: %ld\n", packets);
+    printf("Total bytes: %ld\n", bytes);
+
+    fclose(csv);
     close(sockfd);
+
     return EXIT_SUCCESS;
 }
