@@ -1,7 +1,9 @@
 CC=gcc
 CFLAGS=-Wall -Wextra -O2
-TARGET=emulator
-SRC=src/main.c
+
+TARGET=ping_measure
+
+SRC=src/ping_measure.c
 
 all:
 	$(CC) $(CFLAGS) $(SRC) -o $(TARGET)
@@ -11,3 +13,4 @@ run: all
 
 clean:
 	rm -f $(TARGET)
+	rm -f *.csv
