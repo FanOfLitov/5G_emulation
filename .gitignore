@@ -1,3 +1,10 @@
-emulator-c/emulator
+*.o
+*.out
+*.log
+*.csv
+build/
+.vscode/
+.DS_Store
 emulator-c/ping_measure
 emulator-c/*.csv
+emulator-c/udp_client
