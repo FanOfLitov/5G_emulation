@@ -1,5 +1,25 @@
 services:
-  test-container:
-    image: alpine:latest
-    container_name: 5g-test-container
-    command: ["sh", "-c", "while true; do echo '5G emulator test container is running'; sleep 10; done"]
+  mongodb:
+    image: mongo:6.0
+    container_name: open5gs-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - open5gs-db:/data/db
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: open5gs-mongo-express
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin
+    depends_on:
+      - mongodb
+
+volumes:
+  open5gs-db:
