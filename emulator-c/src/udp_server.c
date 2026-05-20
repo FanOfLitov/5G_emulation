@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <time.h>
 #include <signal.h>
+#include <stdint.h>
 
 #define DEFAULT_PORT 5000
 #define BUFFER_SIZE 65536
@@ -27,6 +28,11 @@ int main(int argc, char *argv[]) {
     signal(SIGINT, handle_signal);
 
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    int opt = 1;
+
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+        perror("setsockopt");
+    }
 
     if (sockfd < 0) {
         perror("socket");
@@ -54,7 +60,7 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    fprintf(csv, "timestamp,packet_number,packet_size,total_packets,total_bytes,throughput_kbps\n");
+    fprintf(csv, "timestamp,sequence,packet_size,total_received,total_bytes,estimated_lost,loss_percent,throughput_kbps\n");
 
     printf("UDP Server started on port %d\n", port);
     printf("Saving results to %s\n", OUTPUT_FILE);
@@ -62,8 +68,10 @@ int main(int argc, char *argv[]) {
 
     char buffer[BUFFER_SIZE];
 
-    long packets = 0;
-    long bytes = 0;
+    uint64_t last_sequence = 0;
+    uint64_t total_received = 0;
+    uint64_t estimated_lost = 0;
+    uint64_t bytes = 0;
 
     time_t start = time(NULL);
 
@@ -79,8 +87,29 @@ int main(int argc, char *argv[]) {
             break;
         }
 
-        packets++;
+        if (received < (ssize_t)sizeof(uint64_t)) {
+            continue;
+        }
+
+        uint64_t sequence_network;
+        memcpy(&sequence_network, buffer, sizeof(sequence_network));
+        uint64_t sequence = be64toh(sequence_network);
+
+        total_received++;
         bytes += received;
+
+        if (last_sequence > 0 && sequence > last_sequence + 1) {
+            estimated_lost += sequence - last_sequence - 1;
+        }
+
+        if (sequence > last_sequence) {
+            last_sequence = sequence;
+        }
+
+        uint64_t expected_total = total_received + estimated_lost;
+        double loss_percent = expected_total > 0
+            ? ((double)estimated_lost / (double)expected_total) * 100.0
+            : 0.0;
 
         time_t now = time(NULL);
         double duration = difftime(now, start);
@@ -91,27 +120,32 @@ int main(int argc, char *argv[]) {
 
         double throughput_kbps = ((double)bytes * 8.0) / duration / 1000.0;
 
-        fprintf(csv, "%ld,%ld,%zd,%ld,%ld,%.2f\n",
+        fprintf(csv, "%ld,%lu,%zd,%lu,%lu,%lu,%.2f,%.2f\n",
                 now,
-                packets,
+                sequence,
                 received,
-                packets,
+                total_received,
                 bytes,
+                estimated_lost,
+                loss_percent,
                 throughput_kbps);
 
         fflush(csv);
 
-        printf("Packets: %ld | Bytes: %ld | Throughput: %.2f Kbit/s\r",
-               packets,
-               bytes,
+        printf("Seq: %lu | Received: %lu | Lost: %lu | Loss: %.2f%% | Throughput: %.2f Kbit/s\r",
+               sequence,
+               total_received,
+               estimated_lost,
+               loss_percent,
                throughput_kbps);
 
         fflush(stdout);
     }
 
     printf("\n\nServer stopped\n");
-    printf("Total packets: %ld\n", packets);
-    printf("Total bytes: %ld\n", bytes);
+    printf("Total received: %lu\n", total_received);
+    printf("Estimated lost: %lu\n", estimated_lost);
+    printf("Total bytes: %lu\n", bytes);
 
     fclose(csv);
     close(sockfd);

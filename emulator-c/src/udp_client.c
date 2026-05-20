@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <stdint.h>
 #include <time.h>
 
 #define DEFAULT_SERVER_IP "127.0.0.1"
@@ -20,6 +21,11 @@ int main(int argc, char *argv[]) {
     if (argc >= 3) port = atoi(argv[2]);
     if (argc >= 4) packets = atoi(argv[3]);
     if (argc >= 5) payload_size = atoi(argv[4]);
+
+    if (payload_size < (int)sizeof(uint64_t)) {
+        fprintf(stderr, "Payload size must be at least %zu bytes\n", sizeof(uint64_t));
+        return EXIT_FAILURE;
+    }
 
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 
@@ -57,7 +63,10 @@ int main(int argc, char *argv[]) {
 
     time_t start = time(NULL);
 
-    for (int i = 1; i <= packets; i++) {
+    for (uint64_t i = 1; i <= (uint64_t)packets; i++) {
+        uint64_t sequence = htobe64(i);
+        memcpy(payload, &sequence, sizeof(sequence));
+
         ssize_t sent = sendto(sockfd,
                               payload,
                               payload_size,
@@ -72,7 +81,7 @@ int main(int argc, char *argv[]) {
             return EXIT_FAILURE;
         }
 
-        printf("[%d/%d] sent %zd bytes\n", i, packets, sent);
+        printf("[%lu/%d] sent %zd bytes\n", i, packets, sent);
         usleep(100000);
     }
 
