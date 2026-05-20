@@ -8,3 +8,5 @@ build/
 emulator-c/ping_measure
 emulator-c/*.csv
 emulator-c/udp_client
+emulator-c/udp_server
+emulator-c/udp_server
