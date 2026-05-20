@@ -1,0 +1,5 @@
+services:
+  test-container:
+    image: alpine:latest
+    container_name: 5g-test-container
+    command: ["sh", "-c", "while true; do echo '5G emulator test container is running'; sleep 10; done"]
