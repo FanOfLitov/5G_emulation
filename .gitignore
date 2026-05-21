@@ -11,3 +11,4 @@ emulator-c/udp_client
 emulator-c/udp_server
 emulator-c/udp_server
 emulator-c/udp_server_results.csv
+external/docker_open5gs/
