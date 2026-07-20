@@ -1,0 +1,22 @@
+{
+  "seed": 42,
+  "episodes": 180,
+  "steps_per_episode": 25,
+  "evaluation_episodes": 30,
+  "qos_actions": [
+    {"rate_mbit": 10, "delay_ms": 40},
+    {"rate_mbit": 20, "delay_ms": 25},
+    {"rate_mbit": 50, "delay_ms": 15},
+    {"rate_mbit": 100, "delay_ms": 5}
+  ],
+  "privacy_actions": [
+    {"name": "minimal", "telemetry_exposure": 0.10, "observability": 0.45},
+    {"name": "balanced", "telemetry_exposure": 0.40, "observability": 0.75},
+    {"name": "detailed", "telemetry_exposure": 0.85, "observability": 1.00}
+  ],
+  "coordinator_actions": [
+    {"name": "privacy_first", "qos_weight": 0.35, "privacy_weight": 0.50, "stability_weight": 0.15},
+    {"name": "balanced", "qos_weight": 0.50, "privacy_weight": 0.30, "stability_weight": 0.20},
+    {"name": "performance_first", "qos_weight": 0.65, "privacy_weight": 0.15, "stability_weight": 0.20}
+  ]
+}
