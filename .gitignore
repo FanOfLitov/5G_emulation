@@ -12,3 +12,12 @@ emulator-c/udp_server
 emulator-c/udp_server
 emulator-c/udp_server_results.csv
 #external/docker_open5gs/
+# Add these lines to the repository .gitignore
+.venv/
+__pycache__/
+*.py[cod]
+.env
+external/docker_open5gs/.env
+.DS_Store
+.vscode/
+.idea/
